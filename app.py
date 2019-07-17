@@ -3,7 +3,6 @@ import logging
 import slack
 import ssl as ssl_lib
 import certifi
-from onboarding_tutorial import OnboardingTutorial
 from scheduled_message import ScheduledMessage
 
 # For simplicity we'll store our app data in-memory with the following data structure.
