@@ -1,24 +1,65 @@
 import os
+from datetime import datetime
+import time
 import logging
 import slack
 import ssl as ssl_lib
 import certifi
 from scheduled_message import ScheduledMessage
+from messaging import Communication
 
 # For simplicity we'll store our app data in-memory with the following data structure.
 # scheduled_message_sent = {"channel": {"user_id": OnboardingTutorial}}
+message_sent = {}
 scheduled_message_sent = {}
+def greeting(web_client: slack.WebClient, user_id: str, channel: str):
+    # Create a new communication.
+    communication = Communication(channel)
+    
+    print ("first_communication is: \n", dir(communication))
+    # Get the onboarding e payload
+    message = communication.get_message_payload()
+    print ("First_message is: \n", message)
+    # Post the onboarding message in Slack
+    response = web_client.chat_postMessage(**message)
+
+    # Capture the timestamp of the message we've just posted so
+    # we can use it to update the message after a user
+    # has completed an onboarding task.
+    communication.timestamp = response["ts"]
+    print ("TIMESTAMP is: \n", communication.timestamp)
+
+    # Store the message sent in messaging_sent
+    if channel not in message_sent:
+        message_sent[channel] = {}
+    message_sent[channel][user_id] = communication
+
+    print ("messaege_sent is: \n", message_sent)
+
+def time_deference(start_time, end_time=time.time()):
+    return (end_time - start_time)/3600
+
+def file_modified_time(path_to_file):
+    stat = os.stat(path_to_file)
+    return stat.st_mtime
 
 
-def start_the_day(web_client: slack.WebClient, user_id: str, channel: str):
+def schdule_a_message(web_client: slack.WebClient, user_id: str, channel: str, message_arrived_at: int , usre_id: str):
     # Create a new onboarding tutorial.
+    
+    communication = Communication(channel)
+    first_message = communication.get_message_payload()
+    message1_timestamp = int(message_arrived_at + 20)
+    text_message = "Greetings"
+    extra_elements = {'post_at': message1_timestamp, 'text': text_message}
+    first_message.update(extra_elements)
     scheduled_message = ScheduledMessage(channel)
 
     # Get the onboarding message payload
     message = scheduled_message.get_message_payload()
-    # print ("Message is: \n", message)
+    # print ("second Message is: \n",first_message)
     # Post the onboarding message in Slack
-    response = web_client.chat_ScheduledMessage(**message)
+    response = web_client.chat_scheduleMessage(**first_message)
 
     # Capture the timestamp of the message we've just posted so
     # we can use it to update the message after a user
@@ -33,89 +74,6 @@ def start_the_day(web_client: slack.WebClient, user_id: str, channel: str):
     scheduled_message_sent[channel][user_id] = scheduled_message
 
 
-# ================ Team Join Event =============== #
-# When the user first joins a team, the type of the event will be 'team_join'.
-# Here we'll link the onboarding_message callback to the 'team_join' event.
-@slack.RTMClient.run_on(event="team_join")
-def onboarding_message(**payload):
-    """Create and send an onboarding welcome message to new users. Save the
-    time stamp of this message so we can update this message in the future.
-    """
-    # Get WebClient so you can communicate back to Slack.
-    web_client = payload["web_client"]
-    print ("Payload is: \n", payload)
-    # Get the id of the Slack user associated with the incoming event
-    user_id = payload["data"]["user"]["id"]
-
-    # Open a DM with the new user.
-    response = web_client.im_open(user_id)
-    channel = response["channel"]["id"]
-
-    # Post the onboarding message.
-    start_the_day(web_client, user_id, channel)
-
-
-# ============= Reaction Added Events ============= #
-# When a users adds an emoji reaction to the onboarding message,
-# the type of the event will be 'reaction_added'.
-# Here we'll link the update_emoji callback to the 'reaction_added' event.
-@slack.RTMClient.run_on(event="reaction_added")
-def update_emoji(**payload):
-    """Update the onboarding welcome message after recieving a "reaction_added"
-    event from Slack. Update timestamp for welcome message as well.
-    """
-    data = payload["data"]
-    web_client = payload["web_client"]
-    channel_id = data["item"]["channel"]
-    user_id = data["user"]
-
-    # Get the original tutorial sent.
-    scheduled_message = scheduled_message_sent[channel_id][user_id]
-
-    # Mark the reaction task as completed.
-    scheduled_message.reaction_task_completed = True
-
-    # Get the new message payload
-    message = scheduled_message.get_message_payload()
-
-    # Post the updated message in Slack
-    updated_message = web_client.chat_update(**message)
-
-    # Update the timestamp saved on the onboarding tutorial object
-    scheduled_message.timestamp = updated_message["ts"]
-
-
-# =============== Pin Added Events ================ #
-# When a users pins a message the type of the event will be 'pin_added'.
-# Here we'll link the update_pin callback to the 'reaction_added' event.
-@slack.RTMClient.run_on(event="pin_added")
-def update_pin(**payload):
-    """Update the onboarding welcome message after recieving a "pin_added"
-    event from Slack. Update timestamp for welcome message as well.
-    """
-
-
-    data = payload["data"]
-    web_client = payload["web_client"]
-    channel_id = data["channel_id"]
-    user_id = data["user"]
-
-    # Get the original tutorial sent.
-    scheduled_message = scheduled_message_sent[channel_id][user_id]
-
-    # Mark the pin task as completed.
-    scheduled_message.pin_task_completed = True
-
-    # Get the new message payload
-    message = scheduled_message.get_message_payload()
-
-    # Post the updated message in Slack
-    updated_message = web_client.chat_update(**message)
-
-    # Update the timestamp saved on the onboarding tutorial object
-    scheduled_message.timestamp = updated_message["ts"]
-
-
 # ============== Message Events ============= #
 # When a user sends a DM, the event type will be 'message'.
 # Here we'll link the message callback to the 'message' event.
@@ -124,16 +82,16 @@ def message(**payload):
     """Display the onboarding welcome message after receiving a message
     that contains "start".
     """
-    print ("web_client is:")
-    print (dir(payload["web_client"]))
+    print ("the data is: \n", payload)
     data = payload["data"]
     web_client = payload["web_client"]
     channel_id = data.get("channel")
     user_id = data.get("user")
     text = data.get("text")
+    message_ts = float(data.get("ts"))
 
-    if text and text.lower() == "start":
-        return start_the_day(web_client, user_id, channel_id)
+    if text and (text.lower() == "morning" or text.lower() == "good morning"):
+        return schdule_a_message(web_client, user_id, channel_id, message_ts, user_id)
     if text and text.lower() == "goodbye":
         rtm_client.stop()
 

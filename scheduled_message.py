@@ -4,12 +4,12 @@ class ScheduledMessage:
     # TODO: Create a better message builder:
     # https://github.com/slackapi/python-slackclient/issues/392
     # https://github.com/slackapi/python-slackclient/pull/400
-    WELCOME_BLOCK = {
+    MORNING_BLOCK = {
         "type": "section",
         "text": {
             "type": "mrkdwn",
             "text": (
-                "Morning! :blush:\n\n"
+                "Morning! <@%s>:blush:\n"
                 "*Shall we start? Whenever ready just reply _ready_ or react with :heavy_check_mark: *"
             ),
         },
@@ -31,7 +31,7 @@ class ScheduledMessage:
             "username": self.username,
             "icon_emoji": self.icon_emoji,
             "blocks": [
-                self.WELCOME_BLOCK,
+                self.MORNING_BLOCK,
                 self.DIVIDER_BLOCK,
                 *self._get_reaction_block(),
                 self.DIVIDER_BLOCK,
