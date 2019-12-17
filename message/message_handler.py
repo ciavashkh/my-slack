@@ -24,7 +24,7 @@ class MessageHandler:
 
         if ( self._action_required() == "schedule a message"):
 
-            return message_schedule( 30, "your time is up", self.channel_id)
+            return message_schedule( 3000, "your time is up", self.channel_id)
 
         if ( self._action_required() == "list schedules"):
 
