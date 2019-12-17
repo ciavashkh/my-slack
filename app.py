@@ -14,8 +14,8 @@ def handle_message(**payload):
     """Passing the message payload to message_handler
     .
     """
-    handler = message.MessageHandler(payload)
-    handler.handle()
+    handler_instance = message.MessageHandler(payload)
+    handler_instance.handle()
 
 
 if __name__ == "__main__":

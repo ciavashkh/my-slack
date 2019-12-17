@@ -1,12 +1,11 @@
 import os
 import time
-from lib.schedule_message import *
+from lib.messaging import *
 
 class MessageHandler:
 
     def __init__(self, payload):
         self.data = payload["data"]
-  
         self.channel_id = self.data.get("channel")
         self.user_id = self.data.get("user")
         self.text = self.data.get("text")
@@ -25,11 +24,11 @@ class MessageHandler:
 
         if ( self._action_required() == "schedule a message"):
 
-            return schedule_a_message( 30, "your time is up", self.channel_id)
+            return message_schedule( 30, "your time is up", self.channel_id)
 
         if ( self._action_required() == "list schedules"):
 
-            return list_schedules()
+            return message_schedule_list(self.channel_id)
 
         if ( self._action_required() == "close connection"):
 
