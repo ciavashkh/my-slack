@@ -14,22 +14,31 @@ class MessageHandler:
     def _action_required(self):
         text = self.text
         if text and (text.lower() == "start"):
-            return "schedule a message"
+            return {'action': "schedule a message", 'time_length' : 3000}
         if text and (text.lower() == "list"):
-            return "list schedules"
+            return {'action': "list schedules", 'channel_id' : self.channel_id}
         if text and text.lower() == "goodbye":
-            return "close connection"
+            return {'action': "close connection"}
+
+        return {'action': "no action"}
 
     def handle(self):
 
-        if ( self._action_required() == "schedule a message"):
+        action_info = self._action_required()
 
-            return message_schedule( 3000, "your time is up", self.channel_id)
 
-        if ( self._action_required() == "list schedules"):
+        if (action_info["action"] == "schedule a message"):
 
-            return message_schedule_list(self.channel_id)
+            return message_schedule( action_info["time_length"], "your time is up", self.channel_id)
+
+        if (action_info["action"] == "list schedules"):
+
+            return message_schedule_list(action_info["channel_id"])
 
         if ( self._action_required() == "close connection"):
 
             rtm_client.stop()
+
+
+        return
+
